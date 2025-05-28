@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dean Dashboard</title>
+</head>
+<body>
+    <h1>Welcome, {{ user.username }} (Dean)</h1>
+    <p>Select an action:</p>
+    <ul>
+<a href="{% url 'add_course' %}">Add Course</a><br>
+<a href="{% url 'view_courses' %}">View Courses</a><br>
+<a href="{% url 'add_session' %}">Add Session</a><br>
+<a href="{% url 'view_sessions' %}">View Sessions</a><br>
+<a href="{% url 'add_semester' %}">Add Semester</a><br>
+<a href="{% url 'view_semesters' %}">View Semesters</a><br>
+<a href="{% url 'add_subject' %}">Add Subject</a><br>
+<a href="{% url 'view_subjects' %}">View Subjects</a><br><br>
+<a href="{% url 'manage_students' %}">Manage Students</a><br>
+<a href="{% url 'add_teacher' %}">Add Faculty Profile</a><br>
+<a href="{% url 'view_teachers' %}">View Faculty Profiles</a><br>
+
+        <li><a href="#">Manage Timetable</a></li>
+        <li><a href="#">Manage Leaves</a></li>
+    </ul>
+</body>
+</html>
+

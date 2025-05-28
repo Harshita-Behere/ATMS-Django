@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Student</title>
+</head>
+<body>
+    <h2>Edit Student - {{ form.first_name.value }} {{ form.last_name.value }}</h2>
+
+    <form method="post">
+        {% csrf_token %}
+        <p>{{ form.username.label_tag }} {{ form.username }}</p>
+        <p>{{ form.email.label_tag }} {{ form.email }}</p>
+        <p>{{ form.first_name.label_tag }} {{ form.first_name }}</p>
+        <p>{{ form.last_name.label_tag }} {{ form.last_name }}</p>
+        <p>{{ form.enrollment_number.label_tag }} {{ form.enrollment_number }}</p>
+        <p>{{ form.course.label_tag }} {{ form.course }}</p>
+        <p>{{ form.session.label_tag }} {{ form.session }}</p>
+        <p>{{ form.semester.label_tag }} {{ form.semester }}</p>
+        <button type="submit">Save Changes</button>
+    </form>
+
+    <br>
+    <a href="{% url 'manage_students' %}">← Back to Student List</a>
+</body>
+</html>

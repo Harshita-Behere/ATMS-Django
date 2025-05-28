@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Teacher Dashboard</title>
+</head>
+<body>
+  <h2>Welcome, {{ profile.user.username }}</h2>
+  <h3>Mark Attendance - Assigned Subjects</h3>
+
+  {% if subjects %}
+  <ul>
+    {% for subject in subjects %}
+      <li>
+        {{ subject.name }} - {{subject.course.name}} - {{subject.session.name}}
+        <a href="{% url 'attendance:mark_attendance' subject.id %}">
+            Mark Attendance
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+    <p>No subjects assigned yet.</p>
+  {% endif %}
+</body>
+</html>
+{# templates/users/teacher_dashboard.html #}
+
+

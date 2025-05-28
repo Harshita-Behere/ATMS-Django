@@ -1,0 +1,52 @@
+{% load my_filters %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mark Attendance</title>
+</head>
+<body>
+
+<h2>Mark Attendance for {{ subject }}</h2>
+<p>Date: {{ date }}</p>
+
+<form method="POST">
+  {% csrf_token %}
+  <table  cellpadding="5" cellspacing="0">
+    <thead>
+      <tr>
+        <th>Student Name</th>
+        <th>Present</th>
+        <th>Absent</th>
+        <th>Leave</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for student in students %}
+      <tr>
+        <td>{{ student.user.get_full_name }}</td>
+        <td>
+          <input type="radio" name="status_{{ student.id }}" value="Present"
+          {% if attendance_dict|get_item:student.user.id == 'Present' %} checked {% endif %}>
+        </td>
+        <td>
+          <input type="radio" name="status_{{ student.id }}" value="Absent"
+          {% if attendance_dict|get_item:student.user.id == 'Absent' or not attendance_dict|get_item:student.user.id %} checked {% endif %}>
+        </td>
+        <td>
+          <input type="radio" name="status_{{ student.id }}" value="Leave"
+          {% if attendance_dict|get_item:student.user.id == 'Leave' %} checked {% endif %}>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <br>
+  <button type="submit">Save Attendance</button>
+</form>
+
+</body>
+</html>
+

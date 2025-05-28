@@ -1,0 +1,27 @@
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    #course urls
+    path('add_course/', views.add_course, name='add_course'),
+    path('view_courses/', views.view_courses, name='view_courses'),
+    path('edit_course/<int:course_id>/', views.edit_course, name='edit_course'),
+    path('delete_course/<int:course_id>/', views.delete_course, name='delete_course'),
+    #session urls
+    path('add_session/', views.add_session, name='add_session'),
+    path('view_sessions/', views.view_sessions, name='view_sessions'),
+    path('edit_session/<int:session_id>/', views.edit_session, name='edit_session'),
+    path('delete_session/<int:session_id>/', views.delete_session, name='delete_session'),
+    #semester urls
+    path('add_semester/', views.add_semester, name='add_semester'),
+    path('view_semesters/', views.view_semesters, name='view_semesters'),
+    path('edit_semester/<int:semester_id>/', views.edit_semester, name='edit_semester'),
+    path('delete_semester/<int:semester_id>/', views.delete_semester, name='delete_semester'),
+    #subject urls
+    path('add_subject/', views.add_subject, name='add_subject'),
+    path('view_subjects/', views.view_subjects, name='view_subjects'),
+    path('edit_subject/<int:subject_id>/', views.edit_subject, name='edit_subject'),
+    path('delete_subject/<int:subject_id>/', views.delete_subject, name='delete_subject'),
+
+
+]

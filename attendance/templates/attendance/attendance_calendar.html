@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Attendance Calendar - {{ subject.name }}</title>
+  <style>
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 900px;
+      margin: 20px auto;
+    }
+    th, td {
+      border: 1px solid #999;
+      padding: 8px;
+      text-align: center;
+      vertical-align: top;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+    }
+    th {
+      background-color: #333;
+      color: white;
+    }
+    td.date-cell {
+      min-width: 70px;
+      height: 100px;
+      position: relative;
+    }
+    td.date-cell .date-number {
+      font-weight: bold;
+      position: absolute;
+      top: 4px;
+      left: 4px;
+    }
+    .status-present {
+      color: green;
+      font-weight: bold;
+    }
+    .status-absent {
+      color: red;
+      font-weight: bold;
+    }
+    .status-leave {
+      color: orange;
+      font-weight: bold;
+    }
+    .nav-links {
+      text-align: center;
+      margin: 20px;
+    }
+    .nav-links a {
+      margin: 0 15px;
+      text-decoration: none;
+      color: #0066cc;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h2 style="text-align:center;">Attendance Calendar for {{ subject.name }}</h2>
+  <div class="nav-links">
+    {% with prev_month=month|add:"-1" prev_year=year %}
+      {% if prev_month < 1 %}
+        {% with prev_month=12 prev_year=year|add:"-1" %}
+          <a href="{% url 'attendance:attendance_calendar' subject.id prev_year prev_month %}">&lt; Previous Month</a>
+        {% endwith %}
+      {% else %}
+        <a href="{% url 'attendance:attendance_calendar' subject.id year prev_month %}">&lt; Previous Month</a>
+      {% endif %}
+    {% endwith %}
+
+    <strong>{{ year }} - {{ month }}</strong>
+
+    {% with next_month=month|add:"1" next_year=year %}
+      {% if next_month > 12 %}
+        {% with next_month=1 next_year=year|add:"1" %}
+          <a href="{% url 'attendance:attendance_calendar' subject.id next_year next_month %}">Next Month &gt;</a>
+        {% endwith %}
+      {% else %}
+        <a href="{% url 'attendance:attendance_calendar' subject.id year next_month %}">Next Month &gt;</a>
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Attendance Summary</th>
+        <th>Mark/Edit Attendance</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for day in days %}
+      <tr>
+        <td class="date-cell">
+          <div class="date-number">{{ day.date.day }}</div>
+          {{ day.date|date:"D, M d" }}
+        </td>
+        <td>
+          {% if day.status_dict %}
+            <ul style="list-style: none; padding-left: 0; max-height: 100px; overflow-y: auto; font-size: 13px;">
+              {% for student_id, status in day.status_dict.items %}
+                {% for student in students %}
+                  {% if student.user.id == student_id %}
+                    <li><strong>{{ student.user.get_full_name }}</strong>: <span class="status-{{ status|lower }}">{{ status }}</span></li>
+                  {% endif %}
+                {% endfor %}
+              {% endfor %}
+            </ul>
+          {% else %}
+            <em>No attendance records</em>
+          {% endif %}
+        </td>
+        <td>
+          <a href="{% url 'attendance:mark_attendance' subject.id day.date %}">Mark/Edit</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>
+

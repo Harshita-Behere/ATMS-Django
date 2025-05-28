@@ -1,0 +1,31 @@
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Subject</title>
+  </head>
+  <body>
+    <div class="container mt-4">
+        <h2>Add Subject</h2>
+
+        {% if messages %}
+      {% for message in messages %}
+        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+    
+        <form method="POST">
+          {% csrf_token %}
+          {{ form.as_p }}
+    
+          <button type="submit" class="btn btn-primary">Add Subject</button>
+        </form>
+    
+        <hr>
+        <a href="{% url 'view_subjects' %}" class="btn btn-secondary mt-2">View Subjects</a>
+      </div>
+  </body>
+  </html>

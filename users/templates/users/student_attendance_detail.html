@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Attendance for {{ subject.name }}</title>
+</head>
+<body>
+    <h2>Attendance for {{ subject.name }}</h2>
+
+    <form method="get">
+        <label for="start_date">Start Date:</label>
+        <input type="date" id="start_date" name="start_date" value="{{ start_date }}">
+        
+        <label for="end_date">End Date:</label>
+        <input type="date" id="end_date" name="end_date" value="{{ end_date }}">
+        
+        <button type="submit">Filter</button>
+    </form>
+
+    <hr>
+
+    {% if attendance_records %}
+        <table border="1" cellpadding="5" cellspacing="0">
+            <tr>
+                <th>Date</th>
+                <th>Status</th>
+            </tr>
+            {% for record in attendance_records %}
+                <tr>
+                    <td>{{ record.date }}</td>
+                    <td>{{ record.status }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+
+        <p><strong>Total Classes:</strong> {{ total_classes }}</p>
+        <p><strong>Present:</strong> {{ present_classes }}</p>
+            <p><strong>Attendance Percentage:</strong> 
+                <span class="{{ css_class }}">{{ percentage }}%</span>
+            </p>
+            
+        </p>
+    {% else %}
+        <p>No attendance records found for the selected range.</p>
+    {% endif %}
+</body>
+</html>

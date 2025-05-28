@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Session</title>
+</head>
+<body>
+    <h2>Edit Session</h2>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Update Session</button>
+  </form>
+  <a href="{% url 'view_sessions' %}">Back to Sessions</a>
+</body>
+</html>
+  

@@ -1,0 +1,29 @@
+<!-- templates/users/edit_teacher.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Edit Teacher</title>
+</head>
+<body>
+    <h2>Edit Teacher</h2>
+
+    {% if messages %}
+        <ul>
+            {% for message in messages %}
+                <li {% if message.tags %} class="{{ message.tags }}" {% endif %}>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Save Changes</button>
+    </form>
+
+    <a href="{% url 'view_teachers' %}">Back to Teachers List</a>
+</body>
+</html>
+
+

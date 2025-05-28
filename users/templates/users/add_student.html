@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Student</title>
+</head>
+<body>
+
+    <div class="container mt-4">
+        <h2>Add New Student</h2>
+    
+        
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    
+        
+        <form method="POST">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="id_email">Email</label>
+                {{ form.email }}
+            </div>
+    
+            <div class="form-group">
+                <label for="id_first_name">First Name</label>
+                {{ form.first_name }}
+            </div>
+    
+            <div class="form-group">
+                <label for="id_last_name">Last Name</label>
+                {{ form.last_name }}
+            </div>
+    
+            <div class="form-group">
+                <label for="id_course">Course</label>
+                {{ form.course }}
+            </div>
+    
+            <div class="form-group">
+                <label for="id_session">Session</label>
+                {{ form.session }}
+            </div>
+    
+            <div class="form-group">
+                <label for="id_semester">Semester</label>
+                {{ form.semester }}
+            </div>
+            
+            <div class="form-group">
+                <label for="id_enrollment_number">Enrollment Number</label>
+                {{ form.enrollment_number }}
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Add Student</button>
+            <a href="{% url 'manage_students' %}" class="btn btn-secondary">Back</a>
+        </form>
+    </div>
+       
+</body>
+</html>
