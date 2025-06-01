@@ -3,26 +3,22 @@ from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.conf import settings
 
-
 ROLE_CHOICES = (
     ('dean', 'Dean'),
     ('teacher', 'Teacher'),
     ('student', 'Student'),
 )
 
-class School(models.Model):
-    name = models.CharField(max_length=100)
 
-    def __str__(self):
-        return self.name
 
 class CustomUser(AbstractUser):
     role = models.CharField(max_length=10, choices=ROLE_CHOICES)
-    school = models.ForeignKey('users.School', on_delete=models.SET_NULL, null=True, blank=True)
-    course = models.ForeignKey('academics.Course', on_delete=models.SET_NULL, null=True, blank=True)
-
+    school = models.ForeignKey('academics.School', on_delete=models.SET_NULL, null=True, blank=True)
+    
     def __str__(self):
         return self.get_full_name() or self.username
+
+
 
 class StudentProfile(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
@@ -30,15 +26,15 @@ class StudentProfile(models.Model):
     session = models.ForeignKey('academics.Session', on_delete=models.CASCADE)
     semester = models.ForeignKey('academics.Semester', on_delete=models.CASCADE)
     enrollment_number = models.CharField(max_length=50, unique=True, default='N/A') 
-    
+    is_active = models.BooleanField(default=True)  
 
     def clean(self):
         if self.user_id and self.user.role != 'student':
             raise ValidationError('Only users with role "student" can have a StudentProfile.')
 
-
     def __str__(self):
         return f"{self.user.username} - {self.course.name}"
+
 
 class TeacherProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -50,7 +46,7 @@ class TeacherProfile(models.Model):
 
 class DeanProfile(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, limit_choices_to={'role': 'dean'})
-    school = models.ForeignKey('academics.School', on_delete=models.CASCADE)  #string ref
+    school = models.ForeignKey('academics.School', on_delete=models.CASCADE)  
 
     def __str__(self):
         return f"{self.user.get_full_name()} - {self.school.name}"

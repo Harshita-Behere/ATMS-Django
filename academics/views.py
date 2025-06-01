@@ -1,24 +1,25 @@
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
-from .forms import AddSubjectForm
-from .forms import AddSessionForm
-from .forms import AddSemesterForm
-from .forms import AddSubjectForm
-from .models import Subject, Course, Session, Semester,Subject
+from .forms import AddSubjectForm, AddSessionForm, AddSemesterForm, AddSubjectForm, AddCourseForm, HolidayForm
+from .models import Subject, Course, Session, Semester,Subject,Holiday
 from django.contrib.auth.decorators import login_required
-from .forms import AddCourseForm 
 from django.contrib import messages
+
 
 #course views
 @login_required
 def add_course(request):
     if request.user.role != 'dean':
-        return redirect('home')
+        return redirect('home') 
+
+    school = request.user.school 
 
     if request.method == 'POST':
         form = AddCourseForm(request.POST)
         if form.is_valid():
-            form.save()
+            course = form.save(commit=False)
+            course.school = school  
+            course.save()
             messages.success(request, "Course added successfully!")
             return redirect('add_course')
         else:
@@ -26,8 +27,7 @@ def add_course(request):
     else:
         form = AddCourseForm()
 
-    courses = Course.objects.all()  # for viewing below the form
-    return render(request, 'academics/add_course.html', {'form': form, 'courses': courses})
+    return render(request, 'academics/add_course.html', {'form': form})
 
 
 @login_required
@@ -61,14 +61,15 @@ def delete_course(request, course_id):
     messages.success(request, "Course deleted successfully.")
     return redirect('add_course')
 
-
 @login_required
 def view_courses(request):
     if request.user.role != 'dean':
         return redirect('home')
 
-    courses = Course.objects.all()
+    school = request.user.school  
+    courses = Course.objects.filter(school=school)
     return render(request, 'academics/view_courses.html', {'courses': courses})
+
 
 
 #session views
@@ -98,7 +99,8 @@ def view_sessions(request):
     if request.user.role != 'dean':
         return redirect('home')
 
-    sessions = Session.objects.all()
+    school = request.user.school  
+    sessions = Session.objects.filter(course__school=school)
     return render(request, 'academics/view_sessions.html', {'sessions': sessions})
 
 
@@ -140,17 +142,17 @@ def add_semester(request):
             course = form.cleaned_data['course']
             session = form.cleaned_data['session']
 
-            # Check if semester already exists
+            
             if Semester.objects.filter(name=name, course=course, session=session).exists():
                 messages.error(request, "Semester already exists.")
             else:
-                # Get the max order for this course & session, default 0 if none
+                
                 max_order = Semester.objects.filter(course=course, session=session).aggregate(
                     Max('order')
-                )['order__max'] or 0
+                )['order__max'] or 1    #default = 1
 
                 semester = form.save(commit=False)
-                semester.order = max_order + 1  # Assign next order number
+                semester.order = max_order + 1  
                 semester.save()
 
                 messages.success(request, "Semester added successfully.")
@@ -164,9 +166,11 @@ def add_semester(request):
 def view_semesters(request):
     if request.user.role != 'dean':
         return redirect('home')
-    
-    semesters = Semester.objects.all().order_by('course', 'session', 'name')
+
+    school = request.user.school  
+    semesters = Semester.objects.filter(course__school=school).order_by('course', 'session', 'name')
     return render(request, 'academics/view_semesters.html', {'semesters': semesters})
+
 
 @login_required
 def edit_semester(request, semester_id):
@@ -193,6 +197,10 @@ def delete_semester(request, semester_id):
     return redirect('view_semesters')
 
 #subject views
+
+def is_dean(user):
+    return hasattr(user, 'deanprofile') 
+
 @login_required
 def add_subject(request):
     if request.user.role != 'dean':
@@ -215,8 +223,10 @@ def view_subjects(request):
     if request.user.role != 'dean':
         return redirect('home')
 
-    subjects = Subject.objects.all().order_by('course', 'session', 'semester', 'name')
+    school = request.user.school  
+    subjects = Subject.objects.filter(course__school=school).order_by('course', 'session', 'semester', 'name')
     return render(request, 'academics/view_subjects.html', {'subjects': subjects})
+
 
 @login_required
 def edit_subject(request, subject_id):
@@ -241,4 +251,42 @@ def delete_subject(request, subject_id):
     subject.delete()
     messages.success(request, "Subject deleted successfully.")
     return redirect('view_subjects')
+
+
+#holiday views
+@login_required
+def holiday_list(request):
+    holidays = Holiday.objects.all().order_by('date')
+    return render(request, 'academics/holiday_list.html', {'holidays': holidays})
+
+@login_required
+def add_holiday(request):
+    if request.method == 'POST':
+        form = HolidayForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('holiday_list')
+    else:
+        form = HolidayForm()
+    return render(request, 'academics/holiday_form.html', {'form': form, 'action': 'Add'})
+
+@login_required
+def edit_holiday(request, holiday_id):
+    holiday = get_object_or_404(Holiday, id=holiday_id)
+    if request.method == 'POST':
+        form = HolidayForm(request.POST, instance=holiday)
+        if form.is_valid():
+            form.save()
+            return redirect('holiday_list')
+    else:
+        form = HolidayForm(instance=holiday)
+    return render(request, 'academics/holiday_form.html', {'form': form, 'action': 'Edit'})
+
+@login_required
+def delete_holiday(request, holiday_id):
+    holiday = get_object_or_404(Holiday, id=holiday_id)
+    if request.method == 'POST':
+        holiday.delete()
+        return redirect('holiday_list')
+    return render(request, 'academics/holiday_confirm_delete.html', {'holiday': holiday})
 

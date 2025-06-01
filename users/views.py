@@ -1,29 +1,34 @@
-from django.shortcuts import render, redirect
-from django.contrib.auth import login
-from django.contrib.auth.views import LoginView
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages 
-from .forms import CustomUserCreationForm, CustomLoginForm, AddTeacherForm, EditTeacherForm
-from .models import CustomUser, StudentProfile, TeacherProfile
-from academics.models import Course, Session, Semester, Subject
-from django.conf import settings
-from .forms import AddStudentForm, EditStudentForm
-from django.shortcuts import render, get_object_or_404
-from attendance.models import AttendanceRecord
-from datetime import datetime
-from django.db.models import Q
-from django.contrib.auth import get_user_model
-from django.core.mail import send_mail
 import random
 import string
+from datetime import datetime
 
-User = get_user_model()
+from django.conf import settings
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from django.contrib.auth import login, get_user_model
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import LoginView
+from django.core.mail import send_mail
+from django.db.models import Q
+
+from .forms import (
+    CustomUserCreationForm,
+    CustomLoginForm,
+    AddTeacherForm,
+    EditTeacherForm,
+    AddStudentForm,
+    EditStudentForm,
+)
 
 
+from .models import CustomUser, StudentProfile, TeacherProfile
+from academics.models import Course, Session, Semester, Subject
+from attendance.models import AttendanceRecord
+from user_messages.models import Message
+ 
 
 
-#for emailing password to student view - later
-
+#for emailing password to student  - later
 # from django.core.mail import send_mail
 # from django.conf import settings
 
@@ -31,10 +36,11 @@ User = get_user_model()
 import openpyxl
 from django.core.mail import send_mail
 
-#bulk promote - rn the only way to promote is bulk promote (not working)
+#bulk promote
 from django.db.models import F
 
 
+User = get_user_model()
 
 def generate_random_password(length=10):
     return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
@@ -135,12 +141,17 @@ def teacher_dashboard(request):
 
     subjects = Subject.objects.filter(teachers=teacher_profile)
 
+    #messages
+    messages = Message.objects.filter(for_teachers=True).order_by('-created_at')
+
     return render(request, 'users/teacher_dashboard.html', {
         'profile': teacher_profile,
         'subjects': subjects,
+        'messages': messages,  
     })
 
-#student 
+
+#student
 @login_required
 def student_dashboard(request):
     try:
@@ -156,11 +167,14 @@ def student_dashboard(request):
         semester=student_profile.semester
     )
 
+    #messages
+    messages = Message.objects.filter(for_students=True).order_by('-created_at')
+
     return render(request, 'users/student_dashboard.html', {
         'profile': student_profile,
-        'subjects': subjects
+        'subjects': subjects,
+        'messages': messages,  
     })
-
 
 
 @login_required
@@ -292,7 +306,7 @@ def delete_teacher(request, teacher_id):
         return redirect('home')
 
     teacher = get_object_or_404(TeacherProfile, id=teacher_id)
-    teacher.user.delete()  # Deletes both user and teacher profile via OneToOne
+    teacher.user.delete()  
     messages.success(request, 'Teacher deleted successfully.')
     return redirect('view_teachers')
 
@@ -341,6 +355,20 @@ def manage_students(request):
     })
 
 @login_required
+def toggle_student_status(request, student_id):
+    if request.user.role != 'dean':
+        return redirect('home')
+
+    student = get_object_or_404(StudentProfile, id=student_id)
+    student.is_active = not student.is_active
+    student.save()
+    messages.success(request, f"Student {'activated' if student.is_active else 'deactivated'} successfully.")
+    return redirect('manage_students')
+
+
+
+
+@login_required
 def add_student(request):
     if request.user.role != 'dean':
         return redirect('home')
@@ -364,6 +392,43 @@ def add_student(request):
         form = AddStudentForm()
 
     return render(request, 'users/add_student.html', {'form': form})
+
+
+
+#email the password to the user (during adding students manually)-- uncomment and replace
+
+# @login_required
+# def add_student(request):
+#     if request.user.role != 'dean':
+#         return redirect('home')
+
+#     if request.method == 'POST':
+#         form = AddStudentForm(request.POST)
+#         if form.is_valid():
+#             student = form.save(commit=False)
+#             student.user.school = request.user.school
+#             student.user.save()
+#             student.save()
+
+#             # Securely email the password to the student
+#             subject = 'Your Student Account Details'
+#             message = (
+#                 f"Hi {student.user.first_name},\n\n"
+#                 f"Your student account has been created successfully.\n\n"
+#                 f"Username: {student.user.username}\n"
+#                 f"Temporary Password: {form.generated_password}\n\n"
+#                 "Please login and change your password as soon as possible."
+#             )
+#             recipient = [student.user.email]
+
+#             send_mail(subject, message, settings.EMAIL_HOST_USER, recipient, fail_silently=False)
+
+#             messages.success(request, f"Student added successfully. Credentials have been sent via email.")
+#             return redirect('manage_students')
+#     else:
+#         form = AddStudentForm()
+
+#     return render(request, 'users/add_student.html', {'form': form})
 
 
 @login_required
@@ -435,34 +500,34 @@ def bulk_add_students(request):
 
         return redirect('manage_students')
 
+
 @login_required
 def promote_students(request):
     if request.method == "POST":
         course_id = request.POST.get("course_id")
         session_id = request.POST.get("session_id")
         semester_id = request.POST.get("semester_id")
-
-        print("Course ID:", course_id)
-        print("Session ID:", session_id)
-        print("Semester ID:", semester_id)
-        print("Selected Student IDs:", selected_ids)
+        selected_ids = request.POST.getlist("selected_students")
 
         if not semester_id:
             messages.error(request, "Please select a semester to promote.")
             return redirect('manage_students')
 
+        
         current_semester = get_object_or_404(Semester, id=semester_id)
 
+        
         students = StudentProfile.objects.filter(
             course_id=course_id,
             session_id=session_id,
             semester_id=semester_id
         )
 
-        selected_ids = request.POST.getlist("selected_students")
+        
         if selected_ids:
             students = students.filter(id__in=selected_ids)
 
+        
         try:
             next_semester = Semester.objects.get(
                 course=current_semester.course,
@@ -470,18 +535,23 @@ def promote_students(request):
                 order=current_semester.order + 1
             )
         except Semester.DoesNotExist:
-            messages.warning(request, "No next semester found for promotion.")
+            messages.warning(request, "No next semester found for promotion.")  #not working
             return redirect('manage_students')
 
-        count = 0
+    
+        promoted_count = 0
         for student in students:
             student.semester = next_semester
             student.save()
-            count += 1
+            promoted_count += 1
 
-        messages.success(request, f"{count} student(s) promoted to {next_semester.name}.")
+        messages.success(request, f"{promoted_count} student(s) promoted to {next_semester.name}.")
         return redirect('manage_students')
 
+    
+    messages.error(request, "Invalid request method.")
+    return redirect('manage_students')
+    
 @login_required
 def edit_student(request, student_id):
     if request.user.role != 'dean':
@@ -500,46 +570,6 @@ def edit_student(request, student_id):
         form = EditStudentForm(instance=student_profile, user_instance=student_user)
 
     return render(request, 'users/edit_student.html', {'form': form})
-
-
-
-
-
-
-#email the password to the user (during adding students manually)
-
-# @login_required
-# def add_student(request):
-#     if request.user.role != 'dean':
-#         return redirect('home')
-
-#     if request.method == 'POST':
-#         form = AddStudentForm(request.POST)
-#         if form.is_valid():
-#             student = form.save(commit=False)
-#             student.user.school = request.user.school
-#             student.user.save()
-#             student.save()
-
-#             # Securely email the password to the student
-#             subject = 'Your Student Account Details'
-#             message = (
-#                 f"Hi {student.user.first_name},\n\n"
-#                 f"Your student account has been created successfully.\n\n"
-#                 f"Username: {student.user.username}\n"
-#                 f"Temporary Password: {form.generated_password}\n\n"
-#                 "Please login and change your password as soon as possible."
-#             )
-#             recipient = [student.user.email]
-
-#             send_mail(subject, message, settings.EMAIL_HOST_USER, recipient, fail_silently=False)
-
-#             messages.success(request, f"Student added successfully. Credentials have been sent via email.")
-#             return redirect('manage_students')
-#     else:
-#         form = AddStudentForm()
-
-#     return render(request, 'users/add_student.html', {'form': form})
 
 
 

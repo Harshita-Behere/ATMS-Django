@@ -14,11 +14,16 @@ class School(models.Model):
     def __str__(self):
         return dict(SCHOOL_CHOICES).get(self.code, self.code)
 
+
+
 class Course(models.Model):
     name = models.CharField(max_length=100)
+    school = models.ForeignKey('academics.School', on_delete=models.CASCADE)  # Add this!
 
     def __str__(self):
         return self.name
+
+
 
 class Session(models.Model):
     name = models.CharField(max_length=50)
@@ -29,18 +34,24 @@ class Session(models.Model):
     def __str__(self):
         return f"{self.name} ({self.course.name})"
 
+
+
 class Semester(models.Model):
     name = models.CharField(max_length=100)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
-    session = models.ForeignKey(Session, on_delete=models.CASCADE)
-    order = models.PositiveIntegerField()  
+    course = models.ForeignKey('Course', on_delete=models.CASCADE)
+    session = models.ForeignKey('Session', on_delete=models.CASCADE)
+    order = models.PositiveIntegerField()
 
     class Meta:
-        unique_together = ('name', 'course', 'session')
-        ordering = ['order']  # semester order (not working)
+        constraints = [
+            models.UniqueConstraint(fields=['name', 'course', 'session'], name='unique_semester_combo'),
+            models.UniqueConstraint(fields=['course', 'session', 'order'], name='unique_semester_order'),
+        ]
+        ordering = ['order']  # Ensures ascending semester order
 
     def __str__(self):
         return f"{self.name} ({self.session} - {self.course})"
+
 
 class Subject(models.Model):
     name = models.CharField(max_length=100)
@@ -52,15 +63,10 @@ class Subject(models.Model):
     def __str__(self):
         return self.name
 
-# class Subject(models.Model):
-#     name = models.CharField(max_length=255)
-#     course = models.ForeignKey(Course, on_delete=models.CASCADE)
-#     session = models.ForeignKey(Session, on_delete=models.CASCADE)
-#     semester = models.ForeignKey(Semester, on_delete=models.CASCADE)
-#     teachers = models.ManyToManyField(TeacherProfile)
 
-#     class Meta:
-#         unique_together = ('name', 'course', 'session', 'semester')
+class Holiday(models.Model):
+    date = models.DateField(unique=True)
+    reason = models.CharField(max_length=255)
 
-#     def __str__(self):
-#         return f"{self.name} ({self.course}, {self.session}, {self.semester})"
+    def __str__(self):
+        return f"{self.date} - {self.reason}"

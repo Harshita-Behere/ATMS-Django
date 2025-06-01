@@ -1,8 +1,6 @@
 from django import forms
-from .models import Subject, Course, Session, Semester
+from .models import Subject, Course, Session, Semester, Holiday, TeacherProfile
 from users.models import CustomUser  
-from .models import Subject, TeacherProfile
-
 
 
 class AddCourseForm(forms.ModelForm):
@@ -34,4 +32,13 @@ class AddSubjectForm(forms.ModelForm):
         fields = ['name', 'course', 'session', 'semester', 'teachers']
         widgets = {
             'teachers': forms.CheckboxSelectMultiple
+        }
+
+
+class HolidayForm(forms.ModelForm):
+    class Meta:
+        model = Holiday
+        fields = ['date', 'reason']
+        widgets = {
+            'date': forms.DateInput(attrs={'type': 'date'}),
         }

@@ -1,10 +1,8 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
-from .models import CustomUser, School, StudentProfile, TeacherProfile
-from academics.models import Course, Session, Semester
+from .models import CustomUser, StudentProfile, TeacherProfile
+from academics.models import School, Course, Session, Semester
 from django.core.exceptions import ValidationError
-
-
 
 
 class CustomUserCreationForm(UserCreationForm):
@@ -35,7 +33,7 @@ class AddTeacherForm(forms.ModelForm):
         fields = ['first_name', 'last_name', 'email']  
 
     def __init__(self, *args, **kwargs):
-        self.request = kwargs.pop('request', None)  # request to access logged-in dean
+        self.request = kwargs.pop('request', None)  
         super().__init__(*args, **kwargs)
 
     def save(self, commit=True):

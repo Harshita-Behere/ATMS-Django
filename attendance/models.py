@@ -40,7 +40,7 @@ class AttendanceRecord(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES)
 
     class Meta:
-        unique_together = ('student', 'subject', 'date')  # prevent duplicate
+        unique_together = ('student', 'subject', 'date')  
 
     def __str__(self):
         return f"{self.student.get_full_name()} - {self.subject.name} - {self.date} - {self.status}"

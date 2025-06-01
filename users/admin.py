@@ -1,8 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import CustomUser, School, StudentProfile
+from .models import CustomUser, StudentProfile, TeacherProfile, DeanProfile
+from academics.models import School
 
-# inline admin for StudentProfile
 class StudentProfileInline(admin.StackedInline):
     model = StudentProfile
     can_delete = False
@@ -21,14 +21,14 @@ class CustomUserAdmin(UserAdmin):
     )
 
     def get_inline_instances(self, request, obj=None):
-        """
-        Show StudentProfile inline only if the user is a student.
-        """
         inlines = []
         if obj and obj.role == 'student':
             inlines.append(StudentProfileInline(self.model, self.admin_site))
         return inlines
 
+
 admin.site.register(CustomUser, CustomUserAdmin)
-admin.site.register(School)
+admin.site.register(StudentProfile)
+admin.site.register(TeacherProfile)
+admin.site.register(DeanProfile)
 
