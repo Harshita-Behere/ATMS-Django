@@ -111,18 +111,27 @@ def mark_attendance(request, subject_id, date_str=None):
     if request.method == 'POST':
         for student in students:
             status = request.POST.get(f'status_{student.id}', 'Absent')
-            attendance_record, created = AttendanceRecord.objects.get_or_create(
-                student=student.user,
-                subject=subject,
-                teacher=request.user,
-                session=subject.session,
-                semester=subject.semester,
-                date=selected_date,
-                defaults={'status': status}
-            )
-            if not created:
-                attendance_record.status = status
-                attendance_record.save()
+            try:
+                attendance_record, created = AttendanceRecord.objects.get_or_create(
+                    student=student.user,
+                    subject=subject,
+                    date=selected_date,
+                    defaults={
+                        'status': status,
+                        'teacher': request.user,
+                        'session': subject.session,
+                        'semester': subject.semester,
+                    }
+                )
+                if not created:
+                    attendance_record.status = status
+                    attendance_record.teacher = request.user  # optional: update teacher if needed
+                    attendance_record.save()
+
+            except IntegrityError:
+                messages.error(request, f"Attendance for {student.user.get_full_name()} on {selected_date} already exists and couldn't be saved again.")
+                continue
+
 
         messages.success(request, f"Attendance for {selected_date} saved successfully.")
         return redirect('attendance:attendance_calendar', subject_id=subject.id, year=selected_date.year, month=selected_date.month)

@@ -22,10 +22,10 @@ class CustomUser(AbstractUser):
 
 class StudentProfile(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
-    course = models.ForeignKey('academics.Course', on_delete=models.CASCADE)
-    session = models.ForeignKey('academics.Session', on_delete=models.CASCADE)
-    semester = models.ForeignKey('academics.Semester', on_delete=models.CASCADE)
-    enrollment_number = models.CharField(max_length=50, unique=True, default='N/A') 
+    course = models.ForeignKey('academics.Course', on_delete=models.CASCADE, null=True, blank=True)
+    session = models.ForeignKey('academics.Session', on_delete=models.CASCADE, null=True, blank=True)
+    semester = models.ForeignKey('academics.Semester', on_delete=models.CASCADE, null=True, blank=True)
+    enrollment_number = models.CharField(max_length=50, null=True, blank=True) 
     is_active = models.BooleanField(default=True)  
 
     def clean(self):
@@ -33,7 +33,9 @@ class StudentProfile(models.Model):
             raise ValidationError('Only users with role "student" can have a StudentProfile.')
 
     def __str__(self):
-        return f"{self.user.username} - {self.course.name}"
+        course_name = self.course.name if self.course else "No Course"
+        return f"{self.user.username} - {course_name}"
+
 
 
 class TeacherProfile(models.Model):

@@ -1,23 +1,24 @@
 # Ignore database
 db.sqlite3
+*.sqlite3
 
-# Ignore virtual environment
+# Ignore virtual environments
 venv/
-ENV/
 env/
+ENV/
+ATMSenv/
 
 # Byte-compiled / cache
 __pycache__/
 *.py[cod]
-*.sqlite3
 
 # Django specific
 *.log
 local_settings.py
 
-# VSCode
+# VSCode settings
 .vscode/
 
-# Mac/Linux/Windows system files
+# OS-specific files
 .DS_Store
 Thumbs.db
