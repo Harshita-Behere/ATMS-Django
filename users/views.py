@@ -39,6 +39,56 @@ from django.core.mail import send_mail
 #bulk promote
 from django.db.models import F
 
+from django.http import JsonResponse
+
+
+# AJAX: Load sessions based on course
+@login_required
+def ajax_load_sessions(request):
+    course_id = request.GET.get('course_id')
+    sessions = Session.objects.filter(course_id=course_id).values('id', 'name')
+    return JsonResponse({'sessions': list(sessions)})
+
+# AJAX: Load semesters based on course and session
+@login_required
+def ajax_load_semesters(request):
+    course_id = request.GET.get('course_id')
+    session_id = request.GET.get('session_id')
+    semesters = Semester.objects.filter(
+        course_id=course_id,
+        session_id=session_id
+    ).values('id', 'name')
+    return JsonResponse({'semesters': list(semesters)})
+
+
+
+
+def get_students_ajax(request, course_id, session_id, semester_id):
+    filters = Q()
+    if course_id:
+        filters &= Q(course_id=course_id)
+    if session_id:
+        filters &= Q(session_id=session_id)
+    if semester_id:
+        filters &= Q(semester_id=semester_id)
+
+    students = StudentProfile.objects.filter(filters).select_related('user')
+
+    student_data = [
+        {
+            'id': student.id,
+            'name': f"{student.user.first_name} {student.user.last_name}"
+        }
+        for student in students
+    ]
+    return JsonResponse({'students': student_data})
+
+@login_required
+def ajax_load_subjects(request):
+    semester_id = request.GET.get('semester_id')
+    subjects = Subject.objects.filter(semester_id=semester_id).values('id', 'name')
+    return JsonResponse({'subjects': list(subjects)})
+
 
 User = get_user_model()
 
@@ -588,3 +638,84 @@ def delete_student(request, student_id):
 
     messages.success(request, f"Student '{user.username}' deleted successfully.")
     return redirect('manage_students') 
+
+
+
+
+
+@login_required
+def view_attendance_history(request):
+    courses = Course.objects.all()
+    sessions = Session.objects.all()
+    semesters = Semester.objects.all()
+    subjects = []
+    attendance_data = []
+
+    course_id = request.GET.get('course')
+    session_id = request.GET.get('session')
+    semester_id = request.GET.get('semester')  # used only to load subjects
+    subject_id = request.GET.get('subject')
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+
+    students = StudentProfile.objects.none()
+
+    if course_id and session_id:
+        # Step 1: Load students filtered by course and session
+        students = StudentProfile.objects.filter(
+            course_id=course_id,
+            session_id=session_id
+        ).select_related('user')
+
+    if semester_id:
+        # Step 2: Load subjects for selected semester
+        subjects = Subject.objects.filter(semester_id=semester_id)
+
+    if subject_id and start_date and end_date:
+        # Step 3: Process attendance per student
+        subject = get_object_or_404(Subject, id=subject_id)
+
+        for student in students:
+            total_classes = AttendanceRecord.objects.filter(
+                subject=subject,
+                date__range=[start_date, end_date],
+                session_id=session_id,
+                student=student.user
+            ).values('date').distinct().count()
+
+            present_count = AttendanceRecord.objects.filter(
+                subject=subject,
+                student=student.user,
+                status='Present',
+                date__range=[start_date, end_date],
+                session_id=session_id
+            ).count()
+
+            absent_count = total_classes - present_count
+            percentage = round((present_count / total_classes * 100), 2) if total_classes else 0
+
+            attendance_data.append({
+                'name': f"{student.user.first_name} {student.user.last_name}",
+                'enrollment': student.enrollment_number,
+                'total': total_classes,
+                'present': present_count,
+                'absent': absent_count,
+                'percentage': percentage
+            })
+
+    context = {
+        'courses': courses,
+        'sessions': sessions,
+        'semesters': semesters,
+        'subjects': subjects,
+        'attendance_data': attendance_data,
+        'selected_course': course_id,
+        'selected_session': session_id,
+        'selected_semester': semester_id,
+        'selected_subject': subject_id,
+        'start_date': start_date,
+        'end_date': end_date,
+    }
+
+    return render(request, 'academics/view_attendance_history.html', context)
+

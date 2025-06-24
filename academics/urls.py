@@ -27,5 +27,6 @@ urlpatterns = [
     path('holidays/add/', views.add_holiday, name='add_holiday'),
     path('holidays/edit/<int:holiday_id>/', views.edit_holiday, name='edit_holiday'),
     path('holidays/delete/<int:holiday_id>/', views.delete_holiday, name='delete_holiday'),
+ 
 
 ]

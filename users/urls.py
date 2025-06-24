@@ -4,12 +4,13 @@ from .views import (
     dean_dashboard, teacher_dashboard, student_dashboard,
     manage_students, add_student, delete_student, 
     student_dashboard, student_attendance_view, bulk_add_students,
-    promote_students, add_teacher, view_teachers ,edit_student,
-    edit_teacher,delete_teacher, toggle_student_status
+    promote_students, add_teacher, view_teachers, edit_student,
+    edit_teacher, delete_teacher, toggle_student_status
 )
 from django.contrib.auth.views import LogoutView
 
-
+from .views import view_attendance_history
+from .views import ajax_load_sessions, ajax_load_semesters,get_students_ajax,ajax_load_subjects
 
 urlpatterns = [
     path('register/', register, name='register'),
@@ -29,11 +30,25 @@ urlpatterns = [
     path('dean/manage-students/bulk-add/', bulk_add_students, name='bulk_add_students'),
     path('dean/manage-students/promote/', promote_students, name='promote_students'),
     path('student/attendance/<int:subject_id>/', student_attendance_view, name='student_attendance_view'),
-    path('dean/add-teacher/',add_teacher,name = 'add_teacher'),
-    path('dean/view-teachers/',view_teachers,name = 'view_teachers'),
+
+    # manage teachers
+    path('dean/add-teacher/', add_teacher, name='add_teacher'),
+    path('dean/view-teachers/', view_teachers, name='view_teachers'),
     path('dean/teachers/edit/<int:teacher_id>/', edit_teacher, name='edit_teacher'),
     path('dean/teachers/delete/<int:teacher_id>/', delete_teacher, name='delete_teacher'),
+
+    # toggle student active/inactive
     path('students/toggle/<int:student_id>/', toggle_student_status, name='toggle_student_status'),
 
-
+    # View attendance history
+    path('dean/attendance-history/', view_attendance_history, name='view_attendance_history'),
+    path('ajax/load-sessions/', ajax_load_sessions, name='ajax_load_sessions'),
+    path('ajax/load-semesters/', ajax_load_semesters, name='ajax_load_semesters'),
+    path('ajax/get-students/<int:course_id>/<int:session_id>/<int:semester_id>/', get_students_ajax, name='get_students_ajax'),
+    path('ajax/get-subjects/', ajax_load_subjects, name='ajax_load_subjects'),
 ]
+
+
+
+
+

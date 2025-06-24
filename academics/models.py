@@ -18,7 +18,7 @@ class School(models.Model):
 
 class Course(models.Model):
     name = models.CharField(max_length=100)
-    school = models.ForeignKey('academics.School', on_delete=models.CASCADE)  # Add this!
+    school = models.ForeignKey('academics.School', on_delete=models.CASCADE)  
 
     def __str__(self):
         return self.name
