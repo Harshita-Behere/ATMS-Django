@@ -25,6 +25,17 @@ from .models import CustomUser, StudentProfile, TeacherProfile
 from academics.models import Course, Session, Semester, Subject
 from attendance.models import AttendanceRecord
 from user_messages.models import Message
+from leaves.models import LeaveRequest
+from django.shortcuts import render, get_object_or_404
+from django.http import HttpResponse
+from django.template.loader import get_template
+from django.contrib.auth.decorators import login_required
+from academics.models import Course, Session, Semester, Subject
+from users.models import StudentProfile 
+from attendance.models import AttendanceRecord
+from xhtml2pdf import pisa
+from openpyxl import Workbook
+from io import BytesIO
  
 
 
@@ -41,15 +52,25 @@ from django.db.models import F
 
 from django.http import JsonResponse
 
+from xhtml2pdf import pisa
 
-# AJAX: Load sessions based on course
+from django.template.loader import get_template
+from django.http import HttpResponse
+
+
+
+
+
+
+
+# to load sessions based on course
 @login_required
 def ajax_load_sessions(request):
     course_id = request.GET.get('course_id')
     sessions = Session.objects.filter(course_id=course_id).values('id', 'name')
     return JsonResponse({'sessions': list(sessions)})
 
-# AJAX: Load semesters based on course and session
+# to load semesters based on course and session
 @login_required
 def ajax_load_semesters(request):
     course_id = request.GET.get('course_id')
@@ -189,17 +210,34 @@ def teacher_dashboard(request):
             'message': "Teacher profile not found. Please contact admin."
         })
 
+    
     subjects = Subject.objects.filter(teachers=teacher_profile)
 
-    #messages
+ 
     messages = Message.objects.filter(for_teachers=True).order_by('-created_at')
+
+  
+    related_courses = subjects.values_list('course', flat=True)
+    related_semesters = subjects.values_list('semester', flat=True)
+
+    students = StudentProfile.objects.filter(
+        course_id__in=related_courses,
+        semester_id__in=related_semesters
+    ).select_related('user')
+
+    student_users = [student.user for student in students]
+
+   
+    leave_requests = LeaveRequest.objects.filter(
+        student__in=student_users
+    ).order_by('-submitted_at')
 
     return render(request, 'users/teacher_dashboard.html', {
         'profile': teacher_profile,
         'subjects': subjects,
-        'messages': messages,  
+        'messages': messages,
+        'leave_requests': leave_requests,
     })
-
 
 #student
 @login_required
@@ -217,8 +255,25 @@ def student_dashboard(request):
         semester=student_profile.semester
     )
 
-    #messages
     messages = Message.objects.filter(for_students=True).order_by('-created_at')
+
+   
+    if request.GET.get("download") == "pdf":
+        template_path = 'users/pdf/student_subject_list.html'
+        context = {
+            'profile': student_profile,
+            'subjects': subjects
+        }
+        template = get_template(template_path)
+        html = template.render(context)
+
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{request.user.username}_subjects.pdf"'
+
+        pisa_status = pisa.CreatePDF(html, dest=response)
+        if pisa_status.err:
+            return HttpResponse("We had some errors generating the PDF.")
+        return response
 
     return render(request, 'users/student_dashboard.html', {
         'profile': student_profile,
@@ -234,6 +289,7 @@ def student_attendance_view(request, subject_id):
 
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
+    download = request.GET.get('download')
 
     attendance_records = AttendanceRecord.objects.filter(
         student=student,
@@ -252,7 +308,6 @@ def student_attendance_view(request, subject_id):
     present_classes = attendance_records.filter(status='Present').count()
     percentage = round((present_classes / total_classes) * 100, 2) if total_classes > 0 else 0
 
-   
     if percentage >= 75:
         css_class = 'text-green'
     elif percentage >= 50:
@@ -260,7 +315,7 @@ def student_attendance_view(request, subject_id):
     else:
         css_class = 'text-red'
 
-    return render(request, 'users/student_attendance_detail.html', {
+    context = {
         'subject': subject,
         'attendance_records': attendance_records.order_by('date'),
         'start_date': start_date,
@@ -268,8 +323,24 @@ def student_attendance_view(request, subject_id):
         'percentage': percentage,
         'total_classes': total_classes,
         'present_classes': present_classes,
-        'css_class': css_class, 
-    })
+        'css_class': css_class,
+    }
+
+   
+    if download == 'pdf' and start_date and end_date:
+        template = get_template('attendance/pdf_student_attendance.html')  
+        html = template.render(context)
+
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="attendance_report.pdf"'
+
+        pisa_status = pisa.CreatePDF(html, dest=response)
+        if pisa_status.err:
+            return HttpResponse('Error generating PDF', status=500)
+        return response
+
+    return render(request, 'users/student_attendance_detail.html', context)
+
 
 #dean
 @login_required
@@ -301,7 +372,7 @@ def add_teacher(request):
             send_mail(
                 'Welcome to the Attendance System',
                 f'Your account has been created.\n\nUsername: {user.username}\nPassword: {password}\nLogin here: http://127.0.0.1:8000/login/', #to be replaced by actual login page url before hosting
-                'harshitabehere2005@gmail.com',  # Replace with dean's gmail
+                'dummyemail@gmail,com',  # replace with dean's gmail
                 [user.email],
                 fail_silently=False,
             )
@@ -643,6 +714,8 @@ def delete_student(request, student_id):
 
 
 
+
+
 @login_required
 def view_attendance_history(request):
     courses = Course.objects.all()
@@ -653,26 +726,24 @@ def view_attendance_history(request):
 
     course_id = request.GET.get('course')
     session_id = request.GET.get('session')
-    semester_id = request.GET.get('semester')  # used only to load subjects
+    semester_id = request.GET.get('semester')  
     subject_id = request.GET.get('subject')
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
+    export = request.GET.get('export')
 
     students = StudentProfile.objects.none()
 
     if course_id and session_id:
-        # Step 1: Load students filtered by course and session
         students = StudentProfile.objects.filter(
             course_id=course_id,
             session_id=session_id
         ).select_related('user')
 
     if semester_id:
-        # Step 2: Load subjects for selected semester
         subjects = Subject.objects.filter(semester_id=semester_id)
 
     if subject_id and start_date and end_date:
-        # Step 3: Process attendance per student
         subject = get_object_or_404(Subject, id=subject_id)
 
         for student in students:
@@ -702,6 +773,63 @@ def view_attendance_history(request):
                 'absent': absent_count,
                 'percentage': percentage
             })
+
+   
+    if export == 'excel':
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Attendance Report"
+
+        ws.append(['Student', 'Enrollment', 'Total Classes', 'Present', 'Absent', 'Attendance %'])
+
+        for row in attendance_data:
+            ws.append([
+                row['name'], row['enrollment'], row['total'],
+                row['present'], row['absent'], row['percentage']
+            ])
+
+        buffer = BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+
+        response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=attendance_report.xlsx'
+        return response
+
+   
+    elif export == 'pdf':
+        subject = get_object_or_404(Subject, id=subject_id)
+    attendance_records = AttendanceRecord.objects.filter(
+        subject=subject,
+        date__range=[start_date, end_date],
+        session_id=session_id
+    ).order_by('date')
+
+    total_classes = attendance_records.values('date').distinct().count()
+    present_classes = attendance_records.filter(status='Present').count()
+    percentage = round((present_classes / total_classes * 100), 2) if total_classes else 0
+
+    template = get_template('attendance/pdf_student_attendance.html')
+    html = template.render({
+        'subject': subject,
+        'start_date': start_date,
+        'end_date': end_date,
+        'attendance_records': attendance_records,
+        'total_classes': total_classes,
+        'present_classes': present_classes,
+        'percentage': percentage
+    })
+    buffer = BytesIO()
+    pisa_status = pisa.CreatePDF(html, dest=buffer)
+
+    if pisa_status.err:
+        return HttpResponse('Error generating PDF', status=500)
+
+    buffer.seek(0)
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename=attendance_report.pdf'
+    return response
+
 
     context = {
         'courses': courses,

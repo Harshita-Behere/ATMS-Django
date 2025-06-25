@@ -90,12 +90,10 @@ def mark_attendance(request, subject_id, date_str=None):
         today = date.today()
         return redirect('attendance:attendance_calendar', subject_id=subject.id, year=today.year, month=today.month)
 
-    # Check if weekend 
     if selected_date.weekday() in (5, 6):
         messages.warning(request, f"{selected_date.strftime('%A, %b %d, %Y')} is a weekend. Attendance cannot be marked.")
         return redirect('attendance:attendance_calendar', subject_id=subject.id, year=selected_date.year, month=selected_date.month)
 
-    # Check if declared holiday
     is_holiday = Holiday.objects.filter(date=selected_date).exists()
     if is_holiday:
         messages.warning(request, f"{selected_date.strftime('%A, %b %d, %Y')} is a declared holiday. Attendance cannot be marked.")
@@ -125,7 +123,7 @@ def mark_attendance(request, subject_id, date_str=None):
                 )
                 if not created:
                     attendance_record.status = status
-                    attendance_record.teacher = request.user  # optional: update teacher if needed
+                    attendance_record.teacher = request.user 
                     attendance_record.save()
 
             except IntegrityError:

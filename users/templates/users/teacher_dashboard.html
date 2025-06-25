@@ -183,7 +183,13 @@
     {% else %}
       <p class="no-data">No subjects assigned yet.</p>
     {% endif %}
-
+    
+    <div class="d-flex justify-content-end mb-3">
+      <a href="{% url 'teacher_leave_requests' %}" class="btn btn-outline-dark btn-sm">
+        <i class="bi bi-file-earmark-medical"></i> View Leave Requests
+      </a>
+    </div>
+    
     <div class="notifications-card mt-4">
       <div class="card-header">
         <h5 class="mb-0">Notifications</h5>

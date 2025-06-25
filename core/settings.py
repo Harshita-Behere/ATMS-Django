@@ -146,3 +146,9 @@ LOGOUT_REDIRECT_URL = '/login/'
 # EMAIL_HOST_USER = 'your_gmail@gmail.com'
 # EMAIL_HOST_PASSWORD = 'your_app_password'  # Use an App Password, not your main password
 
+
+import os
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+

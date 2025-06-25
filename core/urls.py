@@ -3,6 +3,10 @@ from django.urls import path , include
 from users.views import redirect_user
 from core.views import home_view
 from django.contrib.auth import views as auth_views
+from django.conf import settings
+from django.conf.urls.static import static
+
+
 
 urlpatterns = [
     path('', home_view, name='home'),
@@ -17,6 +21,9 @@ urlpatterns = [
     path('users/', include('users.urls')),
     path('academics/', include('academics.urls')),
     path('attendance/', include('attendance.urls', namespace='attendance')),
-    path('leaves/', include('leaves.urls')),
     path('user_messages/', include('user_messages.urls')),
+    path('leaves/', include('leaves.urls')),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

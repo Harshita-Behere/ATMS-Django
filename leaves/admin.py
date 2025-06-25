@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import LeaveApplication
+from .models import LeaveRequest
 
-admin.site.register(LeaveApplication)
+admin.site.register(LeaveRequest)
 
