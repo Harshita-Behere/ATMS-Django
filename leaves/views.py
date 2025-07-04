@@ -22,30 +22,8 @@ def apply_leave(request):
             leave = form.save(commit=False)
             leave.student = request.user
             leave.save()
-
-            try:
-                student_profile = request.user.studentprofile
-                subjects = Subject.objects.filter(
-                    course=student_profile.course,
-                    semester=student_profile.semester
-                ).prefetch_related('teachers')
-
-                teachers_set = set()
-                for subject in subjects:
-                    teachers_set.update(subject.teachers.all())
-
-                for teacher_profile in teachers_set:
-                    LeaveApproval.objects.create(
-                        leave_request=leave,
-                        teacher=teacher_profile.user,  
-                        status='pending'
-                    )
-
-                success = True  
-                form = LeaveRequestForm()  
-
-            except Exception as e:
-                print(f"Error linking teachers to leave: {e}")
+            success = True  
+            form = LeaveRequestForm()  
 
     return render(request, 'leaves/apply_leave.html', {
         'form': form,

@@ -8,6 +8,8 @@ class LeaveRequest(models.Model):
     reason = models.TextField()
     certificate = models.FileField(upload_to='certificates/', null=True, blank=True)
     submitted_at = models.DateTimeField(auto_now_add=True)
+    is_forwarded_by_dean = models.BooleanField(default=False)
+
 
     STATUS_CHOICES = (
         ('pending', 'Pending'),

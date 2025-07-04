@@ -12,6 +12,8 @@ from django.contrib.auth.views import LogoutView
 from .views import view_attendance_history
 from .views import ajax_load_sessions, ajax_load_semesters,get_students_ajax,ajax_load_subjects
 
+from .views import manage_student_leaves, forward_leave_to_teachers, unforward_leave_request
+
 urlpatterns = [
     path('register/', register, name='register'),
     # path('login/', CustomLoginView.as_view(), name='login'),
@@ -46,6 +48,11 @@ urlpatterns = [
     path('ajax/load-semesters/', ajax_load_semesters, name='ajax_load_semesters'),
     path('ajax/get-students/<int:course_id>/<int:session_id>/<int:semester_id>/', get_students_ajax, name='get_students_ajax'),
     path('ajax/get-subjects/', ajax_load_subjects, name='ajax_load_subjects'),
+
+    path('dean/manage-leaves/', manage_student_leaves, name='manage_student_leaves'),
+    path('dean/forward-leave/<int:leave_id>/',forward_leave_to_teachers, name='forward_leave_to_teachers'),
+    path('unforward/<int:leave_id>/', unforward_leave_request, name='unforward_leave'),
+
 ]
 
 

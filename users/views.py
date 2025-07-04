@@ -1,15 +1,22 @@
 import random
 import string
 from datetime import datetime
+from io import BytesIO
+
 
 from django.conf import settings
-from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import login, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
 from django.core.mail import send_mail
-from django.db.models import Q
+from django.db.models import Q, Prefetch, F
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
+from django.template.loader import get_template
+from django.urls import reverse
+from django.views.decorators.http import require_POST
+
 
 from .forms import (
     CustomUserCreationForm,
@@ -21,45 +28,17 @@ from .forms import (
 )
 
 
-from .models import CustomUser, StudentProfile, TeacherProfile
+from .models import CustomUser, StudentProfile, TeacherProfile, StudentProfile  
 from academics.models import Course, Session, Semester, Subject
 from attendance.models import AttendanceRecord
 from user_messages.models import Message
-from leaves.models import LeaveRequest
-from django.shortcuts import render, get_object_or_404
-from django.http import HttpResponse
-from django.template.loader import get_template
-from django.contrib.auth.decorators import login_required
-from academics.models import Course, Session, Semester, Subject
-from users.models import StudentProfile 
-from attendance.models import AttendanceRecord
+from leaves.models import LeaveRequest, LeaveApproval
+
+
+
 from xhtml2pdf import pisa
 from openpyxl import Workbook
-from io import BytesIO
- 
-
-
-#for emailing password to student  - later
-# from django.core.mail import send_mail
-# from django.conf import settings
-
-#bulk import
-import openpyxl
-from django.core.mail import send_mail
-
-#bulk promote
-from django.db.models import F
-
-from django.http import JsonResponse
-
-from xhtml2pdf import pisa
-
-from django.template.loader import get_template
-from django.http import HttpResponse
-
-
-
-
+import openpyxl  
 
 
 
@@ -847,3 +826,151 @@ def view_attendance_history(request):
 
     return render(request, 'academics/view_attendance_history.html', context)
 
+
+
+
+
+
+@login_required
+def manage_student_leaves(request):
+    if not hasattr(request.user, 'deanprofile'):
+        return render(request, 'users/error.html', {'message': "You are not authorized."})
+
+    dean_school = request.user.deanprofile.school
+
+    courses = Course.objects.filter(school=dean_school)
+    sessions = Session.objects.all()
+    semesters = Semester.objects.all()
+
+    
+    approvals_qs = LeaveApproval.objects.select_related('teacher')
+    leaves = LeaveRequest.objects.filter(
+        student__studentprofile__course__school=dean_school
+    ).select_related(
+        'student',
+        'student__studentprofile__course',
+        'student__studentprofile__session',
+        'student__studentprofile__semester'
+    ).prefetch_related(
+        Prefetch('approvals', queryset=approvals_qs)
+    )
+
+    # filters
+    course_id = request.GET.get('course')
+    session_id = request.GET.get('session')
+    semester_id = request.GET.get('semester')
+    forwarded_filter = request.GET.get('forwarded')
+    search = request.GET.get('search')
+
+    if course_id:
+        leaves = leaves.filter(student__studentprofile__course_id=course_id)
+        sessions = sessions.filter(course_id=course_id)
+        semesters = semesters.filter(course_id=course_id)
+
+    if session_id:
+        leaves = leaves.filter(student__studentprofile__session_id=session_id)
+        semesters = semesters.filter(session_id=session_id)
+
+    if semester_id:
+        leaves = leaves.filter(student__studentprofile__semester_id=semester_id)
+
+    if forwarded_filter == 'yes':
+        leaves = leaves.filter(is_forwarded_by_dean=True)
+    elif forwarded_filter == 'no':
+        leaves = leaves.filter(is_forwarded_by_dean=False)
+
+    if search:
+        leaves = leaves.filter(
+            Q(student__username__icontains=search) |
+            Q(student__first_name__icontains=search) |
+            Q(student__last_name__icontains=search) |
+            Q(student__studentprofile__course__name__icontains=search)
+        )
+
+    return render(request, 'users/dean_manage_leaves.html', {
+        'pending_leaves': leaves,
+        'courses': courses,
+        'sessions': sessions,
+        'semesters': semesters,
+        'selected_course': course_id,
+        'selected_session': session_id,
+        'selected_semester': semester_id,
+    })
+
+
+
+
+@require_POST
+@login_required
+def forward_leave_to_teachers(request, leave_id):
+    leave = get_object_or_404(LeaveRequest, id=leave_id)
+
+    if not hasattr(request.user, 'deanprofile'):
+        messages.error(request, "You are not authorized to perform this action.")
+        return redirect_with_filters(request)
+
+    if leave.is_forwarded_by_dean:
+        messages.warning(request, "This leave request has already been forwarded.")
+        return redirect_with_filters(request)
+
+    try:
+        student_profile = leave.student.studentprofile
+        subjects = Subject.objects.filter(
+            course=student_profile.course,
+            semester=student_profile.semester
+        ).prefetch_related('teachers')
+
+        teachers_set = set()
+        for subject in subjects:
+            teachers_set.update(subject.teachers.all())
+
+        for teacher_profile in teachers_set:
+            LeaveApproval.objects.create(
+                leave_request=leave,
+                teacher=teacher_profile.user,
+                status='pending'
+            )
+
+        leave.is_forwarded_by_dean = True
+        leave.save()
+
+        messages.success(request, "Leave successfully forwarded to teachers.")
+        return redirect_with_filters(request)
+
+    except Exception as e:
+        messages.error(request, f"Failed to forward leave: {str(e)}")
+        return redirect_with_filters(request)
+
+
+
+@require_POST
+@login_required
+def unforward_leave_request(request, leave_id):
+    leave = get_object_or_404(LeaveRequest, id=leave_id)
+
+    if not hasattr(request.user, 'deanprofile'):
+        return redirect_with_filters(request)
+
+    if not leave.is_forwarded_by_dean:
+        return redirect_with_filters(request)
+
+    try:
+        leave.approvals.all().delete()
+        leave.is_forwarded_by_dean = False
+        leave.status = 'pending'  
+        leave.save(update_fields=['is_forwarded_by_dean', 'status'])
+
+        messages.success(request, "Leave request has been unforwarded.")
+        return redirect_with_filters(request)
+
+    except Exception as e:
+        messages.error(request, f"Unforward failed: {str(e)}")
+        return redirect_with_filters(request)
+
+
+
+
+
+def redirect_with_filters(request):
+    query_string = request.META.get('QUERY_STRING', '')
+    return redirect(f"{reverse('manage_student_leaves')}?{query_string}")
