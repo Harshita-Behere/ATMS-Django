@@ -15,11 +15,19 @@ def create_message(request):
             message = form.save(commit=False)
             message.sent_by = request.user
             message.save()
-            return redirect('dean_dashboard') 
+            return redirect('/user_messages/announce/?sent=1')  # Redirect with flag
     else:
         form = MessageForm()
-    return render(request, 'messages/create_message.html', {'form': form})
 
+    # Show success box only if sent param is present in URL
+    announcement_sent = request.GET.get('sent') == '1'
+
+    return render(request, 'messages/create_message.html', {
+        'form': form,
+        'announcement_sent': announcement_sent
+    })
+
+    
 @login_required
 def message_list(request):
     user = request.user

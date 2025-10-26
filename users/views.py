@@ -40,6 +40,8 @@ from xhtml2pdf import pisa
 from openpyxl import Workbook
 import openpyxl  
 
+from django.utils import timezone
+from timetable.models import LectureSlot
 
 
 # to load sessions based on course
@@ -177,9 +179,30 @@ def redirect_user(request):
     else:
         return redirect('login')
 
-
+from django.db.models import Prefetch
+from timetable.utils import generate_today_scheduled_lectures
 
 #teacher
+from django.utils import timezone
+from timetable.models import LectureSlot  # or your actual model path
+from users.models import TeacherProfile
+
+
+from django.utils import timezone
+from timetable.models import LectureSlot
+from timetable.models import ScheduledLecture
+from users.models import TeacherProfile
+ # if messages exist
+
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from django.utils import timezone
+from django.db.models import Q
+from timetable.models import ScheduledLecture, LectureSlot
+from users.models import TeacherProfile
+
+
 @login_required
 def teacher_dashboard(request):
     try:
@@ -189,35 +212,44 @@ def teacher_dashboard(request):
             'message': "Teacher profile not found. Please contact admin."
         })
 
-    
-    subjects = Subject.objects.filter(teachers=teacher_profile)
+    today = timezone.localdate()
+    weekday = today.strftime('%A')
 
- 
-    messages = Message.objects.filter(for_teachers=True).order_by('-created_at')
+    # Auto-create today's lectures for this teacher (excluding substitutions)
+    today_slots = LectureSlot.objects.filter(day_of_week=weekday, teacher=teacher_profile)
+    for slot in today_slots:
+        ScheduledLecture.objects.get_or_create(slot=slot, date=today)
 
-  
-    related_courses = subjects.values_list('course', flat=True)
-    related_semesters = subjects.values_list('semester', flat=True)
+    # Fetch lectures where teacher is original or substitute
+    scheduled_lectures = ScheduledLecture.objects.filter(
+        Q(slot__teacher=teacher_profile) | Q(substitute_teacher=teacher_profile),
+        date__lte=today
+    ).select_related('slot__subject', 'slot__teacher', 'substitute_teacher')
 
-    students = StudentProfile.objects.filter(
-        course_id__in=related_courses,
-        semester_id__in=related_semesters
-    ).select_related('user')
+    # Partition and annotate
+    todays_lectures = []
+    other_lectures = []
 
-    student_users = [student.user for student in students]
+    for lec in scheduled_lectures:
+        # Add flags for easy template logic
+        lec.is_original = lec.slot.teacher == teacher_profile
+        lec.is_substitute = lec.substitute_teacher == teacher_profile
 
-   
-    leave_requests = LeaveRequest.objects.filter(
-        student__in=student_users
-    ).order_by('-submitted_at')
+        if lec.date == today:
+            todays_lectures.append(lec)
+        else:
+            other_lectures.append(lec)
+
+    # Fetch messages
+    messages_qs = Message.objects.filter(for_teachers=True).order_by('-created_at')
 
     return render(request, 'users/teacher_dashboard.html', {
         'profile': teacher_profile,
-        'subjects': subjects,
-        'messages': messages,
-        'leave_requests': leave_requests,
+        'todays_lectures': todays_lectures,
+        'other_lectures': other_lectures,
+        'messages': messages_qs,
     })
-
+    
 #student
 @login_required
 def student_dashboard(request):
@@ -260,7 +292,6 @@ def student_dashboard(request):
         'messages': messages,  
     })
 
-
 @login_required
 def student_attendance_view(request, subject_id):
     subject = get_object_or_404(Subject, id=subject_id)
@@ -279,7 +310,7 @@ def student_attendance_view(request, subject_id):
         try:
             start = datetime.strptime(start_date, '%Y-%m-%d').date()
             end = datetime.strptime(end_date, '%Y-%m-%d').date()
-            attendance_records = attendance_records.filter(date__range=(start, end))
+            attendance_records = attendance_records.filter(lecture__date__range=(start, end))
         except ValueError:
             pass
 
@@ -296,7 +327,7 @@ def student_attendance_view(request, subject_id):
 
     context = {
         'subject': subject,
-        'attendance_records': attendance_records.order_by('date'),
+        'attendance_records': attendance_records.order_by('lecture__date'),
         'start_date': start_date,
         'end_date': end_date,
         'percentage': percentage,
@@ -305,9 +336,8 @@ def student_attendance_view(request, subject_id):
         'css_class': css_class,
     }
 
-   
     if download == 'pdf' and start_date and end_date:
-        template = get_template('attendance/pdf_student_attendance.html')  
+        template = get_template('attendance/pdf_student_attendance.html')
         html = template.render(context)
 
         response = HttpResponse(content_type='application/pdf')
@@ -411,6 +441,7 @@ def delete_teacher(request, teacher_id):
     return redirect('view_teachers')
 
 
+
 @login_required
 def manage_students(request):
     if request.user.role != 'dean':
@@ -420,22 +451,25 @@ def manage_students(request):
     sessions = Session.objects.all()
     semesters = Semester.objects.all()
 
-    selected_course = request.GET.get('course')
-    selected_session = request.GET.get('session')
-    selected_semester = request.GET.get('semester')
+    # ✅ Preserve selected values from GET or POST (after redirect)
+    selected_course = request.GET.get('course') or request.POST.get('course_id') or ''
+    selected_session = request.GET.get('session') or request.POST.get('session_id') or ''
+    selected_semester = request.GET.get('semester') or request.POST.get('semester_id') or ''
 
+    # Start with all students
     students = StudentProfile.objects.all()
 
-    if selected_course and selected_course != 'All':
+    # Apply filters if selected
+    if selected_course:
         students = students.filter(course_id=selected_course)
-    if selected_session and selected_session != 'All':
+    if selected_session:
         students = students.filter(session_id=selected_session)
-    if selected_semester and selected_semester != 'All':
+    if selected_semester:
         students = students.filter(semester_id=selected_semester)
 
+    # Student addition form
     form = AddStudentForm()
-
-    if request.method == 'POST':
+    if request.method == 'POST' and 'add_student' in request.POST:
         form = AddStudentForm(request.POST)
         if form.is_valid():
             form.save()
@@ -453,6 +487,7 @@ def manage_students(request):
         'form': form,
         'request': request,
     })
+
 
 @login_required
 def toggle_student_status(request, student_id):
@@ -600,6 +635,11 @@ def bulk_add_students(request):
 
         return redirect('manage_students')
 
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from academics.models import Semester  # Adjust import based on your app name
+from users.models import StudentProfile  # Adjust import based on your app
 
 @login_required
 def promote_students(request):
@@ -607,27 +647,27 @@ def promote_students(request):
         course_id = request.POST.get("course_id")
         session_id = request.POST.get("session_id")
         semester_id = request.POST.get("semester_id")
-        selected_ids = request.POST.getlist("selected_students")
+        selected_ids = request.POST.getlist("selected_students[]")
 
         if not semester_id:
-            messages.error(request, "Please select a semester to promote.")
-            return redirect('manage_students')
+            messages.error(request, "Please select a semester before promoting students.")
+            return redirect(f"/users/dean/manage-students/?course={course_id}&session={session_id}&semester={semester_id}")
 
-        
+        if not selected_ids:
+            messages.error(request, "No students selected for promotion.")
+            return redirect(f"/users/dean/manage-students/?course={course_id}&session={session_id}&semester={semester_id}")
+
+        try:
+            semester_id = int(semester_id)
+        except ValueError:
+            messages.error(request, "Invalid semester selected.")
+            return redirect(f"/users/dean/manage-students/?course={course_id}&session={session_id}&semester={semester_id}")
+
         current_semester = get_object_or_404(Semester, id=semester_id)
 
-        
-        students = StudentProfile.objects.filter(
-            course_id=course_id,
-            session_id=session_id,
-            semester_id=semester_id
-        )
+        # ✅ Only promote selected students
+        students = StudentProfile.objects.filter(id__in=selected_ids)
 
-        
-        if selected_ids:
-            students = students.filter(id__in=selected_ids)
-
-        
         try:
             next_semester = Semester.objects.get(
                 course=current_semester.course,
@@ -635,10 +675,9 @@ def promote_students(request):
                 order=current_semester.order + 1
             )
         except Semester.DoesNotExist:
-            messages.warning(request, "No next semester found for promotion.")  #not working
-            return redirect('manage_students')
+            messages.warning(request, "No next semester found for promotion.")
+            return redirect(f"/users/dean/manage-students/?course={course_id}&session={session_id}&semester={semester_id}")
 
-    
         promoted_count = 0
         for student in students:
             student.semester = next_semester
@@ -646,12 +685,11 @@ def promote_students(request):
             promoted_count += 1
 
         messages.success(request, f"{promoted_count} student(s) promoted to {next_semester.name}.")
-        return redirect('manage_students')
+        return redirect(f"/users/dean/manage-students/?course={course_id}&session={session_id}&semester={next_semester.id}")
 
-    
     messages.error(request, "Invalid request method.")
-    return redirect('manage_students')
-    
+    return redirect("manage_students")
+
 @login_required
 def edit_student(request, student_id):
     if request.user.role != 'dean':
@@ -702,10 +740,11 @@ def view_attendance_history(request):
     semesters = Semester.objects.all()
     subjects = []
     attendance_data = []
+    subject = None  # <== Fixes the UnboundLocalError
 
     course_id = request.GET.get('course')
     session_id = request.GET.get('session')
-    semester_id = request.GET.get('semester')  
+    semester_id = request.GET.get('semester')
     subject_id = request.GET.get('subject')
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
@@ -753,8 +792,8 @@ def view_attendance_history(request):
                 'percentage': percentage
             })
 
-   
-    if export == 'excel':
+    # Excel Export
+    if export == 'excel' and subject:
         wb = Workbook()
         ws = wb.active
         ws.title = "Attendance Report"
@@ -775,40 +814,40 @@ def view_attendance_history(request):
         response['Content-Disposition'] = 'attachment; filename=attendance_report.xlsx'
         return response
 
-   
-    elif export == 'pdf':
+    # PDF Export
+    if export == 'pdf' and subject_id and start_date and end_date:
         subject = get_object_or_404(Subject, id=subject_id)
-    attendance_records = AttendanceRecord.objects.filter(
-        subject=subject,
-        date__range=[start_date, end_date],
-        session_id=session_id
-    ).order_by('date')
+        attendance_records = AttendanceRecord.objects.filter(
+            subject=subject,
+            date__range=[start_date, end_date],
+            session_id=session_id
+        ).order_by('date')
 
-    total_classes = attendance_records.values('date').distinct().count()
-    present_classes = attendance_records.filter(status='Present').count()
-    percentage = round((present_classes / total_classes * 100), 2) if total_classes else 0
+        total_classes = attendance_records.values('date').distinct().count()
+        present_classes = attendance_records.filter(status='Present').count()
+        percentage = round((present_classes / total_classes * 100), 2) if total_classes else 0
 
-    template = get_template('attendance/pdf_student_attendance.html')
-    html = template.render({
-        'subject': subject,
-        'start_date': start_date,
-        'end_date': end_date,
-        'attendance_records': attendance_records,
-        'total_classes': total_classes,
-        'present_classes': present_classes,
-        'percentage': percentage
-    })
-    buffer = BytesIO()
-    pisa_status = pisa.CreatePDF(html, dest=buffer)
+        template = get_template('attendance/pdf_student_attendance.html')
+        html = template.render({
+            'subject': subject,
+            'start_date': start_date,
+            'end_date': end_date,
+            'attendance_records': attendance_records,
+            'total_classes': total_classes,
+            'present_classes': present_classes,
+            'percentage': percentage
+        })
 
-    if pisa_status.err:
-        return HttpResponse('Error generating PDF', status=500)
+        buffer = BytesIO()
+        pisa_status = pisa.CreatePDF(html, dest=buffer)
 
-    buffer.seek(0)
-    response = HttpResponse(buffer, content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename=attendance_report.pdf'
-    return response
+        if pisa_status.err:
+            return HttpResponse('Error generating PDF', status=500)
 
+        buffer.seek(0)
+        response = HttpResponse(buffer, content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename=attendance_report.pdf'
+        return response
 
     context = {
         'courses': courses,
@@ -825,10 +864,6 @@ def view_attendance_history(request):
     }
 
     return render(request, 'academics/view_attendance_history.html', context)
-
-
-
-
 
 
 @login_required

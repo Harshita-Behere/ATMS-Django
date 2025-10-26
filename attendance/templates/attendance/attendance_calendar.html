@@ -1,190 +1,105 @@
+{% load static %}
+{% load attendance_tags %}
+
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
   <title>Attendance Calendar - {{ subject.name }}</title>
   <style>
-   
     body {
-      margin: 0;
-      padding: 20px 10px;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      font-size: 14px;
       background: linear-gradient(-45deg, #667eea, #764ba2, #ff758c);
       background-size: 400% 400%;
       animation: gradientMove 20s ease infinite;
+      font-family: 'Segoe UI', sans-serif;
+      padding: 20px 10px;
+      margin: 0;
     }
     @keyframes gradientMove {
       0% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
-
     .container {
-      background: #ffffff;
+      background: white;
       border-radius: 10px;
-      padding: 25px;
-      max-width: 900px;
-      margin: 30px auto;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      padding: 30px;
+      max-width: 960px;
+      margin: 40px auto;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.08);
     }
-
-  
     h2 {
-      font-size: 22px;
-      font-weight: bold;
-      margin-bottom: 20px;
-      color: #333;
+      font-size: 26px;
       text-align: center;
+      color: #333;
+      margin-bottom: 25px;
     }
-
-   
     .nav-links {
       text-align: center;
       margin-bottom: 25px;
     }
     .nav-links a {
-      margin: 0 15px;
+      margin: 0 12px;
       text-decoration: none;
       color: #6c63ff;
-      font-weight: bold;
-      font-size: 14px;
-      transition: color 0.3s ease;
+      font-weight: 600;
     }
     .nav-links a:hover {
-      color: #5848d6;
+      color: #5145cd;
     }
-    .nav-links strong {
-      font-weight: 600;
-      font-size: 16px;
-      color: #444;
-    }
-
-  
     table {
-      border-collapse: collapse;
       width: 100%;
+      border-collapse: collapse;
       font-size: 14px;
     }
     th, td {
       border: 1px solid #ddd;
-      padding: 12px 10px;
+      padding: 12px;
       vertical-align: top;
-      text-align: center;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
     th {
-      background-color: #6c63ff;
+      background: #6c63ff;
       color: white;
       font-weight: 600;
     }
-
-    td.date-cell {
-      min-width: 80px;
-      height: 110px;
-      position: relative;
-      font-weight: 600;
-      color: #333;
-    }
-    td.date-cell .date-number {
-      position: absolute;
-      top: 6px;
-      left: 8px;
-      font-weight: 700;
-      font-size: 16px;
+    .date-number {
+      font-weight: bold;
       color: #6c63ff;
+      font-size: 16px;
     }
-
-   
-    tr.holiday {
-      background-color: #f9f9f9;
-      color: #999;
-      font-style: italic;
-    }
-    .holiday-label {
-      margin-top: 6px;
-      font-size: 13px;
-      color: #c64848;
-      font-weight: 700;
-    }
-
-    
-    .status-present {
-      color: green;
-      font-weight: 700;
-    }
-    .status-absent {
-      color: red;
-      font-weight: 700;
-    }
-    .status-leave {
-      color: orange;
-      font-weight: 700;
-    }
-
-    .attendance-list {
-      list-style: none;
-      padding-left: 0;
-      max-height: 100px;
-      overflow-y: auto;
-      font-size: 13px;
-      margin: 0;
-      text-align: left;
-    }
-    .attendance-list li {
-      margin-bottom: 3px;
-    }
-
-    
-    .disabled-text {
-      color: #999;
-      font-style: italic;
-    }
-
-    
-    .popup-alert {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      z-index: 9999;
-      background-color: #6c63ff;
-      color: #fff;
-      padding: 14px 20px;
+    .lecture-info {
+      margin-bottom: 10px;
+      padding: 8px;
+      border: 1px solid #eee;
+      background: #fafafa;
       border-radius: 6px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      font-size: 14px;
-      animation: fadeOut 4s forwards;
-      opacity: 0.95;
     }
-    .popup-alert.success { background-color: #28a745; }
-    .popup-alert.error { background-color: #dc3545; }
-    .popup-alert.warning { background-color: #ffc107; color: #333; }
-    .popup-alert.info { background-color: #17a2b8; }
-
-    @keyframes fadeOut {
-      0% { opacity: 0.95; }
-      80% { opacity: 0.95; }
-      100% { opacity: 0; transform: translateX(50px); }
+    .lecture-header {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .status-present { color: #28a745; font-weight: 600; }
+    .status-absent { color: #dc3545; font-weight: 600; }
+    .status-leave { color: #ff9800; font-weight: 600; }
+    .disabled-text {
+      color: #aaa;
+      font-style: italic;
+    }
+    .mark-link {
+      color: #6c63ff;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .mark-link:hover {
+      color: #5145cd;
+      text-decoration: underline;
     }
   </style>
 </head>
 <body>
-  
-  {% if messages %}
-    <div id="popup-container">
-      {% for message in messages %}
-        <div class="popup-alert {{ message.tags }}">
-          {{ message }}
-        </div>
-      {% endfor %}
-    </div>
-  {% endif %}
-
   <div class="container">
     <h2>Attendance Calendar for {{ subject.name }}</h2>
 
-    
     <div class="nav-links">
       {% with prev_month=month|add:"-1" prev_year=year %}
         {% if prev_month < 1 %}
@@ -209,65 +124,62 @@
       {% endwith %}
     </div>
 
-    
     <table>
       <thead>
         <tr>
-          <th>Date</th>
-          <th>Attendance Summary</th>
-          <th>Mark/Edit Attendance</th>
+          <th style="width: 120px;">Date</th>
+          <th>Lectures & Attendance</th>
         </tr>
       </thead>
       <tbody>
         {% for day in days %}
-          {% with day_date=day.date|date:"Y-m-d" %}
-          <tr class="{% if day_date in holidays %}holiday{% endif %}">
-            <td class="date-cell">
+          <tr>
+            <td>
               <div class="date-number">{{ day.date.day }}</div>
-              {{ day.date|date:"D, M d" }}
-              {% if day_date in holidays %}
-                <div class="holiday-label">Holiday</div>
+              {{ day.date|date:"D, d M Y" }}
+              {% if day.is_weekend %}
+                <div class="disabled-text">Weekend</div>
+              {% elif day.is_holiday %}
+                <div class="disabled-text">Holiday</div>
               {% endif %}
             </td>
             <td>
-              {% if day.status_dict %}
-                <ul class="attendance-list">
-                  {% for student_id, status in day.status_dict.items %}
-                    {% for student in students %}
-                      {% if student.user.id == student_id %}
-                        <li><strong>{{ student.user.get_full_name }}</strong>: <span class="status-{{ status|lower }}">{{ status }}</span></li>
+              {% if day.lectures %}
+                {% for entry in day.lectures %}
+                  <div class="lecture-info">
+                    <div class="lecture-header">Lecture {{ entry.lecture.slot.lecture_number }} | 
+                      {% if not day.is_weekend and not day.is_holiday %}
+                        <a href="{% url 'attendance:mark_attendance' entry.lecture.id %}" class="mark-link">Mark / Edit</a>
+                      {% else %}
+                        <span class="disabled-text">Holiday / Weekend</span>
                       {% endif %}
-                    {% endfor %}
-                  {% endfor %}
-                </ul>
+                    </div>
+                    {% if entry.status_dict %}
+                      <ul>
+                        {% for student in students %}
+                          {% if student.user.id in entry.status_dict %}
+                            <li>
+                              <strong>{{ student.user.get_full_name }}</strong>:
+                              <span class="status-{{ entry.status_dict|get_item:student.user.id|lower }}">
+                                {{ entry.status_dict|get_item:student.user.id }}
+                              </span>
+                            </li>
+                          {% endif %}
+                        {% endfor %}
+                      </ul>
+                    {% else %}
+                      <em class="disabled-text">No attendance marked yet</em>
+                    {% endif %}
+                  </div>
+                {% endfor %}
               {% else %}
-                <em>No attendance records</em>
-              {% endif %}
-            </td>
-            <td>
-              {% if day_date in holidays %}
-                <span class="disabled-text">Mark/Edit Disabled</span>
-              {% else %}
-                <a href="{% url 'attendance:mark_attendance' subject.id day.date %}" style="color:#6c63ff; font-weight: 600;">Mark/Edit</a>
+                <em class="disabled-text">No lectures scheduled</em>
               {% endif %}
             </td>
           </tr>
-          {% endwith %}
         {% endfor %}
       </tbody>
     </table>
   </div>
-
-  <script>
-    
-    setTimeout(() => {
-      const popups = document.querySelectorAll('.popup-alert');
-      popups.forEach(popup => {
-        popup.remove();
-      });
-    }, 4500);
-  </script>
 </body>
 </html>
-
-

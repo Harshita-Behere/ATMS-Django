@@ -53,6 +53,10 @@ urlpatterns = [
     path('dean/forward-leave/<int:leave_id>/',forward_leave_to_teachers, name='forward_leave_to_teachers'),
     path('unforward/<int:leave_id>/', unforward_leave_request, name='unforward_leave'),
 
+    #manage students 
+    path('ajax/load-sessions/', ajax_load_sessions, name='ajax_load_sessions'),
+    path('ajax/load-semesters/', ajax_load_semesters, name='ajax_load_semesters'),
+
 ]
 
 

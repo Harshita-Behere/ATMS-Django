@@ -10,7 +10,6 @@ ROLE_CHOICES = (
 )
 
 
-
 class CustomUser(AbstractUser):
     role = models.CharField(max_length=10, choices=ROLE_CHOICES)
     school = models.ForeignKey('academics.School', on_delete=models.SET_NULL, null=True, blank=True)
@@ -19,12 +18,16 @@ class CustomUser(AbstractUser):
         return self.get_full_name() or self.username
 
 
-
 class StudentProfile(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     course = models.ForeignKey('academics.Course', on_delete=models.CASCADE, null=True, blank=True)
     session = models.ForeignKey('academics.Session', on_delete=models.CASCADE, null=True, blank=True)
     semester = models.ForeignKey('academics.Semester', on_delete=models.CASCADE, null=True, blank=True)
+    
+    # NEW — optional section & group fields
+    section = models.ForeignKey('academics.Section', on_delete=models.SET_NULL, null=True, blank=True)
+    group = models.ForeignKey('academics.StudentGroup', on_delete=models.SET_NULL, null=True, blank=True)
+
     enrollment_number = models.CharField(max_length=50, null=True, blank=True) 
     is_active = models.BooleanField(default=True)  
 
@@ -37,13 +40,11 @@ class StudentProfile(models.Model):
         return f"{self.user.username} - {course_name}"
 
 
-
 class TeacherProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     
     def __str__(self):
         return self.user.username  
-
 
 
 class DeanProfile(models.Model):

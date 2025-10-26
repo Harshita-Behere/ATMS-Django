@@ -23,6 +23,7 @@ urlpatterns = [
     path('attendance/', include('attendance.urls', namespace='attendance')),
     path('user_messages/', include('user_messages.urls')),
     path('leaves/', include('leaves.urls')),
+    path('timetable/', include('timetable.urls')),
 ]
 
 if settings.DEBUG:

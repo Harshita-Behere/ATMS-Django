@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Mark Attendance for {{ subject }}</title>
   <style>
-    
     body {
       margin: 0;
       padding: 20px 10px;
@@ -23,39 +22,35 @@
       100% { background-position: 0% 50%; }
     }
 
-    
     .container {
       background: #ffffff;
-      border-radius: 10px;
-      padding: 30px 35px;
-      max-width: 720px;
+      border-radius: 16px;
+      padding: 35px 40px;
+      max-width: 800px;
       margin: 40px auto;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
     }
 
-    
     h2 {
-      font-size: 24px;
+      font-size: 26px;
       font-weight: 700;
-      margin-bottom: 6px;
-      color: #333;
+      margin-bottom: 10px;
+      color: #2c3e50;
       text-align: center;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.04em;
     }
 
-    
     .date-display {
       text-align: center;
-      font-weight: 600;
+      font-weight: 500;
       color: #555;
       margin-bottom: 25px;
       font-size: 16px;
     }
 
- 
     .alert {
-      padding: 10px 16px;
-      border-radius: 5px;
+      padding: 12px 18px;
+      border-radius: 6px;
       margin-bottom: 20px;
       font-weight: 600;
       font-size: 14px;
@@ -72,7 +67,6 @@
       background-color: #f8d7da;
       color: #842029;
     }
-
 
     table {
       width: 100%;
@@ -93,8 +87,13 @@
 
     tbody tr {
       background-color: #f9f9fb;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
       border-radius: 8px;
+      transition: transform 0.2s ease;
+    }
+
+    tbody tr:hover {
+      transform: scale(1.01);
     }
 
     tbody tr.inactive-row {
@@ -108,17 +107,10 @@
       text-align: center;
       vertical-align: middle;
       border: none;
-      position: relative;
       font-weight: 500;
       color: #444;
     }
 
-    tbody tr.inactive-row td {
-      color: #999;
-      font-style: italic;
-    }
-
-   
     tbody tr td:first-child {
       text-align: left;
       padding-left: 20px;
@@ -126,7 +118,6 @@
       color: #2c3e50;
     }
 
-   
     .inactive-label {
       font-style: italic;
       color: #999;
@@ -135,7 +126,6 @@
       font-size: 13px;
     }
 
-    
     input[type="radio"] {
       width: 18px;
       height: 18px;
@@ -148,26 +138,25 @@
       accent-color: #ccc;
     }
 
-    /* Submit Button */
     button[type="submit"] {
       margin-top: 30px;
       background-color: #6c63ff;
       color: white;
       border: none;
-      padding: 14px 0;
+      padding: 16px 0;
       font-size: 16px;
       font-weight: 700;
       border-radius: 8px;
       cursor: pointer;
-      transition: background-color 0.3s ease;
+      transition: background-color 0.3s ease, transform 0.2s ease;
       width: 100%;
     }
 
     button[type="submit"]:hover {
       background-color: #5848d6;
+      transform: translateY(-1px);
     }
 
-    /* Responsive */
     @media (max-width: 600px) {
       .container {
         padding: 20px 15px;
@@ -185,7 +174,7 @@
 <body>
   <div class="container">
     <h2>Mark Attendance for {{ subject }}</h2>
-    <p class="date-display">Date: {{ date }}</p>
+    <p class="date-display">Date: {{ date|date:"F j, Y" }}</p>
 
     {% if messages %}
       {% for message in messages %}
@@ -217,36 +206,19 @@
             </td>
 
             <td>
-              <input
-                type="radio"
-                name="status_{{ student.id }}"
-                value="Present"
+              <input type="radio" name="status_{{ student.id }}" value="Present"
                 {% if not student.is_active %}disabled{% endif %}
-                {% if attendance_dict|get_item:student.user.id == 'Present' %}checked{% endif %}
-                aria-label="Present for {{ student.user.get_full_name }}"
-              >
+                {% if attendance_dict|get_item:student.user.id == 'Present' %}checked{% endif %}>
             </td>
-
             <td>
-              <input
-                type="radio"
-                name="status_{{ student.id }}"
-                value="Absent"
+              <input type="radio" name="status_{{ student.id }}" value="Absent"
                 {% if not student.is_active %}disabled{% endif %}
-                {% if attendance_dict|get_item:student.user.id == 'Absent' or not attendance_dict|get_item:student.user.id %}checked{% endif %}
-                aria-label="Absent for {{ student.user.get_full_name }}"
-              >
+                {% if attendance_dict|get_item:student.user.id == 'Absent' or not attendance_dict|get_item:student.user.id %}checked{% endif %}>
             </td>
-
             <td>
-              <input
-                type="radio"
-                name="status_{{ student.id }}"
-                value="Leave"
+              <input type="radio" name="status_{{ student.id }}" value="Leave"
                 {% if not student.is_active %}disabled{% endif %}
-                {% if attendance_dict|get_item:student.user.id == 'Leave' %}checked{% endif %}
-                aria-label="Leave for {{ student.user.get_full_name }}"
-              >
+                {% if attendance_dict|get_item:student.user.id == 'Leave' %}checked{% endif %}>
             </td>
           </tr>
           {% endfor %}

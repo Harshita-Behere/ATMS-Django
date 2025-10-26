@@ -290,3 +290,140 @@ def delete_holiday(request, holiday_id):
         return redirect('holiday_list')
     return render(request, 'academics/holiday_confirm_delete.html', {'holiday': holiday})
 
+# -------------------
+# Section Views
+# -------------------
+
+from .forms import AddSectionForm, AddGroupForm
+from .models import Section, StudentGroup
+
+@login_required
+def add_section(request):
+    if request.user.role != 'dean':
+        return redirect('home')
+
+    school = request.user.school
+
+    if request.method == 'POST':
+        form = AddSectionForm(request.POST)
+        if form.is_valid():
+            section = form.save(commit=False)
+            section.school = school
+            section.save()
+            messages.success(request, "Section added successfully.")
+            return redirect('view_sections')
+        else:
+            messages.error(request, "Failed to add section.")
+    else:
+        form = AddSectionForm()
+
+    return render(request, 'academics/add_section.html', {'form': form})
+
+
+@login_required
+def view_sections(request):
+    if request.user.role != 'dean':
+        return redirect('home')
+
+    school = request.user.school
+    sections = Section.objects.filter(course__school=school)
+    return render(request, 'academics/view_sections.html', {'sections': sections})
+
+
+@login_required
+def edit_section(request, section_id):
+    if request.user.role != 'dean':
+        return redirect('home')
+
+    section = get_object_or_404(Section, id=section_id)
+    if request.method == 'POST':
+        form = AddSectionForm(request.POST, instance=section)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Section updated successfully.")
+            return redirect('view_sections')
+        else:
+            messages.error(request, "Failed to update section.")
+    else:
+        form = AddSectionForm(instance=section)
+
+    return render(request, 'academics/edit_section.html', {'form': form})
+
+
+@login_required
+def delete_section(request, section_id):
+    if request.user.role != 'dean':
+        return redirect('home')
+
+    section = get_object_or_404(Section, id=section_id)
+    section.delete()
+    messages.success(request, "Section deleted successfully.")
+    return redirect('view_sections')
+
+
+# -------------------
+# Group Views
+# -------------------
+
+@login_required
+def add_group(request):
+    if request.user.role != 'dean':
+        return redirect('home')
+
+    school = request.user.school
+
+    if request.method == 'POST':
+        form = AddGroupForm(request.POST)
+        if form.is_valid():
+            group = form.save(commit=False)
+            group.school = school
+            group.save()
+            messages.success(request, "Group added successfully.")
+            return redirect('view_groups')
+        else:
+            messages.error(request, "Failed to add group.")
+    else:
+        form = AddGroupForm()
+
+    return render(request, 'academics/add_group.html', {'form': form})
+
+
+@login_required
+def view_groups(request):
+    if request.user.role != 'dean':
+        return redirect('home')
+
+    school = request.user.school
+    groups = StudentGroup.objects.filter(course__school=school)
+    return render(request, 'academics/view_groups.html', {'groups': groups})
+
+
+@login_required
+def edit_group(request, group_id):
+    if request.user.role != 'dean':
+        return redirect('home')
+
+    group = get_object_or_404(StudentGroup, id=group_id)
+    if request.method == 'POST':
+        form = AddGroupForm(request.POST, instance=group)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Group updated successfully.")
+            return redirect('view_groups')
+        else:
+            messages.error(request, "Failed to update group.")
+    else:
+        form = AddGroupForm(instance=group)
+
+    return render(request, 'academics/edit_group.html', {'form': form})
+
+
+@login_required
+def delete_group(request, group_id):
+    if request.user.role != 'dean':
+        return redirect('home')
+
+    group = get_object_or_404(StudentGroup, id=group_id)
+    group.delete()
+    messages.success(request, "Group deleted successfully.")
+    return redirect('view_groups')

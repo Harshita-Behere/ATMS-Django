@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     'academics',
     'attendance',
     'leaves',
-    'user_messages'
+    'user_messages',
+    'timetable'
     # 'social_django', 
 ]
 

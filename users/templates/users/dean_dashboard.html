@@ -116,13 +116,32 @@
       <a href="{% url 'view_attendance_history' %}" class="card">
         <div class="card-icon">📂</div>Attendance History
       </a>
-      
-      <a href="#" class="card"><div class="card-icon">🗓️</div>Manage Timetable</a>
+      <a href="{% url 'manage_timetable_home' %}" class="card">
+        <div class="card-icon">🗓️</div>
+        Manage Timetable
+      </a>
+    
+
       <a href="{% url 'manage_student_leaves' %}" class="card">
         <div class="card-icon">📝</div>
         Manage Leaves
       </a>
-      
+          <!-- Sections -->
+    <a href="{% url 'add_section' %}" class="card">
+      <div class="card-icon">➕🏫</div>Add Section
+    </a>
+    <a href="{% url 'view_sections' %}" class="card">
+      <div class="card-icon">🏫</div>View Sections
+    </a>
+
+    <!-- Groups -->
+    <a href="{% url 'add_group' %}" class="card">
+      <div class="card-icon">➕👥</div>Add Group
+    </a>
+    <a href="{% url 'view_groups' %}" class="card">
+      <div class="card-icon">👥</div>View Groups
+    </a>
+
     </div>
   </div>
 </body>
